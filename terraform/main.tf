@@ -1,0 +1,125 @@
+# Create a VPC
+resource "aws_vpc" "k8-vpc" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "k8s-dev-vpc"
+  }
+}
+
+# Create a Subnet
+resource "aws_subnet" "k8-subnet" {
+  vpc_id     = aws_vpc.k8-vpc.id
+  cidr_block = "10.0.1.0/24"
+  availability_zone = "eu-west-2a" # desired AZ
+  tags = {
+    Name = "k8s-dev-subnet"
+  }
+}
+
+# Create an Internet Gateway
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.k8-vpc.id
+  tags = {
+    Name = "k8s-dev-igw"
+  }
+}
+
+# Create a Route Table
+resource "aws_route_table" "main" {
+  vpc_id = aws_vpc.k8-vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+
+  tags = {
+    Name = "k8s-dev-route-table"
+  }
+}
+
+# Associate the Route Table with the Subnet
+resource "aws_route_table_association" "main" {
+  subnet_id      = aws_subnet.k8-subnet.id
+  route_table_id = aws_route_table.main.id
+}
+
+# Create a Security Group
+resource "aws_security_group" "k8-sg" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic and all outbound traffic"
+  vpc_id      = aws_vpc.k8-vpc.id
+
+  tags = {
+    Name = "k8-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "k8-sg_443" {
+  security_group_id = aws_security_group.k8-sg.id
+  cidr_ipv4         = aws_vpc.k8-vpc.cidr_block
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
+}
+
+resource "aws_vpc_security_group_ingress_rule" "k8-sg_80" {
+  security_group_id = aws_security_group.k8-sg.id
+  cidr_ipv4         = aws_vpc.k8-vpc.cidr_block
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
+  security_group_id = aws_security_group.k8-sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # semantically equivalent to all ports
+}
+
+
+# Create a key pair
+resource "aws_key_pair" "k8s_node" {
+  key_name   = "k8s_node-key"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3F6tyPEFEzV0LX3X8BsXdMsQz1x2cEikKDEY0aIj41qgxMCP/iteneqXSIFZBp5vizPvaoIR3Um9xK7PGoW8giupGn+EPuxIA4cDM4vzOqOkiMPhz5XK0whEjkVzTo4+S0puvDZuwIsdiW9mxhJc7tgBNL0cYlWSYVkz4G/fslNfRPW5mYAM49f4fhtxPb5ok4Q2Lg9dPKVHO/Bgeu5woMc7RY0p1ej6D4CKFE6lymSDJpW0YHX/wqE9+cfEauh7xZcG0q9t2ta6F6fmX0agvpFyZo8aFbXeUBr7osSCJNgvavWbM/06niWrOvYX2xwWdhXmXSrbX8ZbabVohBK41 email@example.com"
+}
+
+# Create an EC2 Instance
+data "aws_ami" "k8s_node" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
+  }
+  filter {
+    name   = "k8s_node"
+    values = ["al2023-ami-2023*"]
+  }
+}
+
+resource "aws_instance" "k8s_node" {
+  ami           = data.aws_ami.k8s_node.id
+  instance_type = "t2.medium"
+  subnet_id     = aws_subnet.k8-subnet.id
+  vpc_security_group_ids = [aws_security_group.k8-sg.id]
+  key_name      = aws_key_pair.k8s_node.key_name
+
+  tags = {
+    Name = "k8s-node"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update
+              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+              sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+              sudo install minikube /usr/local/bin
+              sudo usermod -aG docker $USER
+              sudo su - $USER -c "minikube start --driver=docker"
+              EOF
+}
