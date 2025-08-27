@@ -85,21 +85,25 @@ resource "aws_key_pair" "k8s_node" {
 }
 
 # Create an EC2 Instance
-data "aws_ami" "k8s_node" {
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["amazon"]
+
   filter {
-    name   = "architecture"
-    values = ["arm64"]
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
+
   filter {
-    name   = "k8s_node"
-    values = ["al2023-ami-2023*"]
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
+
+  owners = ["amazon"] # Canonical
 }
 
+
 resource "aws_instance" "k8s_node" {
-  ami           = data.aws_ami.k8s_node.id
+  ami           = data.aws_ami.ubuntu.id
   instance_type = "t2.medium"
   subnet_id     = aws_subnet.k8-subnet.id
   vpc_security_group_ids = [aws_security_group.k8-sg.id]
