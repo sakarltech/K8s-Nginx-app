@@ -72,6 +72,14 @@ resource "aws_vpc_security_group_ingress_rule" "k8-sg_80" {
   to_port           = 80
 }
 
+resource "aws_vpc_security_group_ingress_rule" "k8-sg_22" {
+  security_group_id = aws_security_group.k8-sg.id
+  cidr_ipv4         = aws_vpc.k8-vpc.cidr_block
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
   security_group_id = aws_security_group.k8-sg.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -80,20 +88,25 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
 
 
 # Create a key pair
-resource "tls_private_key" "k8s_node" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-resource "aws_key_pair" "k8s_node" {
-  key_name   = "k8s_node-key"
-  public_key = tls_private_key.k8s_node.public_key_openssh
-}
+# resource "tls_private_key" "k8s_node" {
+#   algorithm = "RSA"
+#   rsa_bits  = 4096
+# }
+# resource "aws_key_pair" "k8s_node" {
+#   key_name   = "k8s_node-key"
+#   public_key = tls_private_key.k8s_node.public_key_openssh
+# }
 
-resource "local_file" "private_key" {
-  filename        = "${aws_key_pair.k8s_node.key_name}.pem"
-  content         = tls_private_key.k8s_node.private_key_pem
-  file_permission = "0400"
-}
+# resource "local_file" "private_key" {
+#   filename        = "${aws_key_pair.k8s_node.key_name}.pem"
+#   content         = tls_private_key.k8s_node.private_key_pem
+#   file_permission = "0400"
+# }
+
+# resource "aws_key_pair" "k8s_node" {
+#   key_name   = "k8s_node-key"
+#   public_key = file("~/.ssh/id_rsa.pub")  
+# }
 
 # Create an EC2 Instance
 data "aws_ami" "ubuntu" {
@@ -118,23 +131,11 @@ resource "aws_instance" "k8s_node" {
   instance_type = "t2.medium"
   subnet_id     = aws_subnet.k8-subnet.id
   vpc_security_group_ids = [aws_security_group.k8-sg.id]
-  key_name      = aws_key_pair.k8s_node.key_name
+  key_name      = "Karlkey"
 
   tags = {
     Name = "k8s-node"
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              sudo apt-get update
-              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-              sudo apt-get update
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-              sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-              sudo install minikube /usr/local/bin
-              sudo usermod -aG docker $USER
-              sudo su - $USER -c "minikube start --driver=docker"
-              EOF
+  user_data = file(Users/aideyancarlton/K8s-Nginx-app/terraform/install_script.sh)
 }
