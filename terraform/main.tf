@@ -74,7 +74,7 @@ resource "aws_vpc_security_group_ingress_rule" "k8-sg_80" {
 
 resource "aws_vpc_security_group_ingress_rule" "k8-sg_22" {
   security_group_id = aws_security_group.k8-sg.id
-  cidr_ipv4         = aws_vpc.k8-vpc.cidr_block
+  cidr_ipv4         = "185.241.227.168/32"
   from_port         = 22
   ip_protocol       = "tcp"
   to_port           = 22
@@ -131,11 +131,24 @@ resource "aws_instance" "k8s_node" {
   instance_type = "t2.medium"
   subnet_id     = aws_subnet.k8-subnet.id
   vpc_security_group_ids = [aws_security_group.k8-sg.id]
-  key_name      = "Karlkey"
+  key_name      = "KarlKey"
 
   tags = {
     Name = "k8s-node"
   }
 
-  user_data = file(Users/aideyancarlton/K8s-Nginx-app/terraform/install_script.sh)
+  user_data = file("install_script.sh")
+
+  provisioner "file" {
+    source = "/Users/aideyancarlton/K8s-Nginx-app/K8-manifest"
+    destination = "/home/ubuntu"
+
+    connection {
+      type = "ssh"
+      user = "ubuntu"
+      private_key = file("/Users/aideyancarlton/Downloads/All Downloads/KarlKey.pem")
+      host = aws_instance.k8s_node.public_ip
+    }
+  }
 }
+
