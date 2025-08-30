@@ -35,7 +35,7 @@ Before you begin, ensure you have the following:
 
 Follow these steps to deploy the project:
 
-### 1. Clone the Repository
+## 1. Clone the Repository
 
 Clone this GitHub repository to your local machine:
 
