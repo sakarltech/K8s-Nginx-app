@@ -35,7 +35,7 @@ Before you begin, ensure you have the following:
 
 Follow these steps to deploy the project:
 
-## 1. Clone the Repository
+### 1. Clone the Repository
 
 Clone this GitHub repository to your local machine:
 
@@ -43,7 +43,7 @@ Clone this GitHub repository to your local machine:
 git clone <repository_url>
 cd <repository_directory>
 ```
-## 2. Configure AWS Credentials
+### 2. Configure AWS Credentials
 
 Set up your AWS credentials as environment variables or using the AWS CLI:
 
@@ -59,7 +59,7 @@ Or, configure using the AWS CLI:
 aws configure
 ```
 
-## 3. Configure Terraform Variables
+### 3. Configure Terraform Variables
 
 In the `terraform/variables.tf` file, update the following variables:
 
@@ -67,7 +67,7 @@ In the `terraform/variables.tf` file, update the following variables:
 * `instance_type`: Choose an appropriate EC2 instance type (e.g., `t2.medium`).
 * `key_name`: Set the name of your SSH key pair in AWS.
 
-## 4. Initialize Terraform
+### 4. Initialize Terraform
 
 Navigate to the `terraform` directory and initialize Terraform:
 
@@ -76,7 +76,7 @@ cd terraform
 terraform init
 ```
 
-## 5. Apply Terraform Configuration
+### 5. Apply Terraform Configuration
 
 Apply the Terraform configuration to create the EC2 instance and install Minikube:
 
@@ -84,7 +84,7 @@ Apply the Terraform configuration to create the EC2 instance and install Minikub
 terraform apply -auto-approve
 ```
 
-## 6. SSH into the EC2 Instance
+### 6. SSH into the EC2 Instance
 
 After Terraform creates the EC2 instance, get the public IP address from the Terraform output and SSH into the instance using your key pair:
 
@@ -92,7 +92,7 @@ After Terraform creates the EC2 instance, get the public IP address from the Ter
 ssh -i <your_key>.pem ec2-user@<public_ip>
 ```
 
-## 7. Verify Minikube is Running
+### 7. Verify Minikube is Running
 
 Once connected to the EC2 instance, verify that Minikube is running by executing:
 
@@ -102,7 +102,7 @@ kubectl cluster-info
 
 If Minikube is running correctly, you should see information about the Kubernetes cluster.
 
-## 8. Deploy Nginx to Kubernetes
+### 8. Deploy Nginx to Kubernetes
 
 Apply the Kubernetes manifests to deploy Nginx. First, create the `nginx-demo` namespace:
 
@@ -119,7 +119,7 @@ kubectl apply -f kubernetes/configmap.yml
 kubectl apply -f kubernetes/secret.yml
 ```
 
-## 9. Access the Nginx Service
+### 9. Access the Nginx Service
 
 To access the Nginx service, you'll need to determine the NodePort assigned to the service. Run the following command:
 
